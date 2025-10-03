@@ -91,13 +91,15 @@ if mode == "Outline Optimization":
                 progress_bar.progress(75)
                 
                 try:
+                    if not callable(optimize_outline):
+                        raise ValueError("Outline optimizer not available (import or load failed, likely spaCy issue). Check console logs.")
                     enhanced_md, metadata = optimize_outline(query_text, outline_text)
                     st.session_state.output_md = enhanced_md
                     st.session_state.metadata = metadata
                     progress_bar.progress(100)
                     st.success("Optimization complete!")
-                except NameError:
-                    st.error("Optimization function not defined (import failed, likely spaCy issue). Check console logs for details.")
+                except ValueError as ve:
+                    st.error(str(ve))
                     st.info("No filename matching required—uploader uses extension filters only. Fix: Downgrade spaCy to 3.7.2 in requirements.txt.")
                 except Exception as e:
                     st.error(f"Error during optimization: {str(e)}")
@@ -120,13 +122,15 @@ elif mode == "Draft Optimization":
                 progress_bar.progress(75)
                 
                 try:
+                    if not callable(optimize_draft):
+                        raise ValueError("Draft optimizer not available (import or load failed, likely spaCy issue). Check console logs.")
                     report_md, metadata = optimize_draft(draft_text, kw_text)
                     st.session_state.output_md = report_md
                     st.session_state.metadata = metadata
                     progress_bar.progress(100)
                     st.success("Optimization complete!")
-                except NameError:
-                    st.error("Optimization function not defined (import failed, likely spaCy issue). Check console logs for details.")
+                except ValueError as ve:
+                    st.error(str(ve))
                     st.info("No filename matching required—uploader uses extension filters only. Fix: Downgrade spaCy to 3.7.2 in requirements.txt.")
                 except Exception as e:
                     st.error(f"Error during optimization: {str(e)}")
