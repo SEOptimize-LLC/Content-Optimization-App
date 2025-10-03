@@ -1,12 +1,39 @@
 import re
-import spacy
-from transformers import pipeline
-from sentence_transformers import SentenceTransformer, util
+import traceback
+
+# Diagnostic logging for spaCy import
+print("Attempting spaCy import...")
+try:
+    import spacy
+    print("SUCCESS: Imported spacy.")
+except ImportError as e:
+    print(f"IMPORT ERROR in spacy: {e}")
+    traceback.print_exc()
+except Exception as e:
+    print(f"GENERAL ERROR in spacy: {e}")
+    traceback.print_exc()
+
+try:
+    from transformers import pipeline
+    print("SUCCESS: Imported transformers.pipeline.")
+except Exception as e:
+    print(f"ERROR in transformers: {e}")
+    traceback.print_exc()
+
+try:
+    from sentence_transformers import SentenceTransformer, util
+    print("SUCCESS: Imported sentence_transformers.")
+except Exception as e:
+    print(f"ERROR in sentence_transformers: {e}")
+    traceback.print_exc()
+
 import nltk
 from nltk.corpus import stopwords
 from collections import defaultdict
 import markdown
 from bs4 import BeautifulSoup
+
+print("Core imports for outline_optimizer completed.")
 
 # Download required NLTK data
 nltk.download('stopwords', quiet=True)

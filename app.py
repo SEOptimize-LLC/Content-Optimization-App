@@ -1,10 +1,42 @@
 import streamlit as st
 import os
-from core.outline_optimizer import optimize_outline
-from core.draft_optimizer import optimize_draft
-from docx import Document
-from docx.shared import Inches
+import traceback
+
+# Diagnostic logging for imports
+print("=== Starting Import Diagnostics ===")
+try:
+    from core.outline_optimizer import optimize_outline
+    print("SUCCESS: Imported outline_optimizer.")
+except ImportError as e:
+    print(f"IMPORT ERROR in outline_optimizer: {e}")
+    traceback.print_exc()
+except Exception as e:
+    print(f"GENERAL ERROR in outline_optimizer: {e}")
+    traceback.print_exc()
+
+try:
+    from core.draft_optimizer import optimize_draft
+    print("SUCCESS: Imported draft_optimizer.")
+except ImportError as e:
+    print(f"IMPORT ERROR in draft_optimizer: {e}")
+    traceback.print_exc()
+except Exception as e:
+    print(f"GENERAL ERROR in draft_optimizer: {e}")
+    traceback.print_exc()
+
+try:
+    from docx import Document
+    from docx.shared import Inches
+    print("SUCCESS: Imported docx.")
+except ImportError as e:
+    print(f"IMPORT ERROR in docx: {e}")
+    traceback.print_exc()
+except Exception as e:
+    print(f"GENERAL ERROR in docx: {e}")
+    traceback.print_exc()
+
 import io
+print("=== All Imports Completed ===")
 
 # Page config
 st.set_page_config(page_title="Blog Optimizer", page_icon="📝", layout="wide")

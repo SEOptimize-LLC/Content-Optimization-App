@@ -38,6 +38,15 @@ touch blog_optimizer/tests/__init__.py
 - **Exports**: Download as Word (.docx); Google Docs integration (requires API setup).
 - **Tech Stack**: Python, Streamlit, spaCy, Hugging Face Transformers, Sentence Transformers, NLTK, python-docx, Google API Client.
 
+## API Dependencies
+The core optimization features (outline and draft processing) do not require any 3rd party APIs—they run entirely locally using pre-trained ML models downloaded via libraries like Hugging Face Transformers and spaCy. 
+
+- **Optional 3rd Party API**: Google Docs export uses the Google Docs API, which requires:
+  - A Google Cloud project with the API enabled.
+  - OAuth credentials (`credentials.json` in project root).
+  - Initial authorization (browser flow on first run).
+  If not set up, the app falls back to Word export without issues. No API keys are needed for the main functionality.
+
 ## Setup
 1. **Clone/Navigate to Project**:
    ```
@@ -118,9 +127,14 @@ pytest tests/
 ```
 
 ## Deployment
-- **Streamlit Cloud**: Connect GitHub repo; add `requirements.txt`.
-- **Heroku**: Use `Procfile`: `web: streamlit run app.py --server.port $PORT`.
-- **Secrets**: For Google API, use environment variables or Streamlit secrets.toml.
+- **Local Run**: Use Python 3.10-3.12 for best compatibility with ML libraries (e.g., torch, spacy).
+- **Streamlit Cloud**:
+  - Connect GitHub repo.
+  - Set Python version to 3.12 in app settings (avoids wheel issues with torch/spacy on 3.13+).
+  - Add `requirements.txt`; deployment auto-installs.
+  - For secrets (e.g., Google credentials), use Streamlit secrets.toml.
+- **Heroku**: Use `Procfile`: `web: streamlit run app.py --server.port $PORT`. Specify Python 3.12 in runtime.txt.
+- **Notes**: If deployment hangs on dependencies, downgrade torch to 2.3.1 or spacy to 3.7.2 for broader compatibility. Test locally first.
 
 ## Limitations & Improvements
 - ML Models: Uses lightweight models (e.g., T5-small); upgrade to GPT for better paraphrasing.
