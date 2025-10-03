@@ -4,6 +4,9 @@ import traceback
 
 # Diagnostic logging for imports
 print("=== Starting Import Diagnostics ===")
+optimize_outline = None
+optimize_draft = None
+
 try:
     from core.outline_optimizer import optimize_outline
     print("SUCCESS: Imported outline_optimizer.")
@@ -93,8 +96,12 @@ if mode == "Outline Optimization":
                     st.session_state.metadata = metadata
                     progress_bar.progress(100)
                     st.success("Optimization complete!")
+                except NameError:
+                    st.error("Optimization function not defined (import failed, likely spaCy issue). Check console logs for details.")
+                    st.info("No filename matching required—uploader uses extension filters only. Fix: Downgrade spaCy to 3.7.2 in requirements.txt.")
                 except Exception as e:
                     st.error(f"Error during optimization: {str(e)}")
+                    st.info("Likely cause: spaCy import failure. See local console or cloud logs for details. Try downgrading spaCy to 3.7.2.")
         else:
             st.warning("Please upload both files.")
 
@@ -118,8 +125,12 @@ elif mode == "Draft Optimization":
                     st.session_state.metadata = metadata
                     progress_bar.progress(100)
                     st.success("Optimization complete!")
+                except NameError:
+                    st.error("Optimization function not defined (import failed, likely spaCy issue). Check console logs for details.")
+                    st.info("No filename matching required—uploader uses extension filters only. Fix: Downgrade spaCy to 3.7.2 in requirements.txt.")
                 except Exception as e:
                     st.error(f"Error during optimization: {str(e)}")
+                    st.info("Likely cause: spaCy import failure. See local console or cloud logs for details. Try downgrading spaCy to 3.7.2.")
         else:
             st.warning("Please upload both files.")
 
