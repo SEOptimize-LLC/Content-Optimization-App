@@ -46,6 +46,60 @@ streamlit run app.py
 
 ---
 
+## 🤖 LLM Enhancement (Optional)
+
+### **OpenRouter API Setup**
+
+The app can optionally use LLM models to enhance content generation with more natural, high-quality text.
+
+**Supported Models:**
+- 🟢 **Google**: `gemini-2.5-flash` (Fast, affordable)
+- 🔵 **OpenAI**: `gpt-4o-mini`, `gpt-4.1-mini` (Fast & reasoning)
+- 🟣 **Anthropic**: `claude-haiku-4.5` (Fast, high-quality)
+- ⚡ **xAI**: `grok-4-fast` (Fast reasoning)
+
+### **Setup Instructions**
+
+#### **1. Get OpenRouter API Key**
+1. Sign up at [openrouter.ai](https://openrouter.ai/)
+2. Add credits to your account (pay-as-you-go)
+3. Copy your API key from the dashboard
+
+#### **2. Add to Streamlit Secrets**
+1. Go to your Streamlit Cloud dashboard
+2. Select your app → **Settings** → **Secrets**
+3. Add the following:
+
+```toml
+OPENROUTER_API_KEY = "sk-or-v1-xxxxxxxxxxxxx"
+```
+
+4. Save and restart the app
+
+#### **3. Verify Configuration**
+- Open the app sidebar
+- Look for **"🤖 LLM Enhancement"** section
+- If configured correctly, you'll see: **"✓ LLM API Configured"**
+
+### **What Gets Enhanced with LLM?**
+
+When enabled, LLM enhances:
+- ✨ **Definition Generation** - More accurate, comprehensive definitions
+- ✨ **Keyword Insertion** - Natural, contextual sentence suggestions
+- ✨ **Content Quality** - Better readability and semantic relevance
+
+**Default Behavior:** App works fully without LLM using local models (T5-small). LLM is optional for premium quality.
+
+### **Cost Estimates**
+
+Based on typical usage:
+- **Outline Optimization**: ~$0.01-0.03 per outline
+- **Draft Optimization**: ~$0.02-0.05 per 2000-word draft
+
+All costs are tracked and displayed in the app sidebar.
+
+---
+
 ## 📊 Framework Overview
 
 ### **Koray's Semantic SEO Framework - 10 Core Components**

@@ -9,9 +9,18 @@ from transformers import pipeline
 from typing import Dict, List, Optional
 import re
 
+# Try to import LLM client
+try:
+    from .llm_config import get_llm_client, is_llm_enabled
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+    get_llm_client = None
+    is_llm_enabled = None
+
 try:
     nlp = spacy.load("en_core_web_sm")
-    # Use T5 for paraphrasing and definition generation
+    # Use T5 for paraphrasing and definition generation (fallback when LLM not available)
     paraphraser = pipeline("text2text-generation", model="t5-small")
 except Exception as e:
     print(f"Error loading models: {e}")
@@ -46,7 +55,34 @@ class ContentStructureGenerator:
         Returns:
             Structured definition with extractive and abstractive components
         """
-        # Generate extractive definition (concise, key facts)
+        # Try LLM first if available
+        if LLM_AVAILABLE and is_llm_enabled():
+            try:
+                llm_client = get_llm_client()
+                if llm_client:
+                    context = context_info or self.central_entity
+                    llm_result = llm_client.generate_definition(term, context)
+
+                    if llm_result.get('success'):
+                        return {
+                            'term': term,
+                            'extractive_definition': llm_result.get('extractive_definition', ''),
+                            'abstractive_definition': llm_result.get('abstractive_definition', ''),
+                            'combined_definition': llm_result.get('combined_definition', ''),
+                            'structure': 'definition_first',
+                            'instructions': [
+                                'Place this definition at the start of the section',
+                                'Ensure scientific rigor and accuracy',
+                                'Provide multiple perspectives if applicable',
+                                'Use clear, accessible language'
+                            ],
+                            'llm_enhanced': True,
+                            'model_used': llm_result.get('model', 'LLM')
+                        }
+            except Exception as e:
+                print(f"LLM generation failed, falling back to local model: {e}")
+
+        # Fallback to T5-small local model
         extractive_prompt = f"define: {term}"
         if context_info:
             extractive_prompt += f" in the context of {context_info}"
@@ -76,7 +112,9 @@ class ContentStructureGenerator:
                 'Ensure scientific rigor and accuracy',
                 'Provide multiple perspectives if applicable',
                 'Use clear, accessible language'
-            ]
+            ],
+            'llm_enhanced': False,
+            'model_used': 'T5-small (local)'
         }
 
     def generate_question_answer_pairs(self,

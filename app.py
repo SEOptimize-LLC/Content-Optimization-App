@@ -13,6 +13,7 @@ try:
     from core.entity_context_extractor import extract_entity_context
     from core.outline_optimizer import optimize_outline
     from core.draft_optimizer import optimize_draft
+    from core.llm_config import get_llm_client, is_llm_enabled
     print("SUCCESS: Semantic SEO optimizers loaded")
 except Exception as e:
     print(f"ERROR loading optimizers: {e}")
@@ -82,6 +83,21 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
+    st.markdown("### 🤖 LLM Enhancement")
+
+    # Check LLM status
+    llm_available = is_llm_enabled()
+
+    if llm_available:
+        st.success("✓ LLM API Configured")
+        llm_client = get_llm_client()
+        if llm_client:
+            st.markdown(f"**Total Cost:** ${llm_client.total_cost:.4f}")
+    else:
+        st.warning("⚠️ LLM Not Configured")
+        st.markdown("Add `OPENROUTER_API_KEY` to Streamlit Secrets to enable AI-enhanced content generation.")
+
+    st.markdown("---")
     st.markdown("### 📚 Framework Features")
     st.markdown("""
     ✅ Entity & Attribute Detection
@@ -92,6 +108,8 @@ with st.sidebar:
     ✅ Semantic Content Network
     ✅ URL Structure Planning
     ✅ Meta Optimization
+    ✅ LLM-Enhanced Definitions
+    ✅ AI Keyword Insertion
     """)
 
 # STEP 1: Upload Query Fan-Out Report

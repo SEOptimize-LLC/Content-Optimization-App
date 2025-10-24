@@ -25,6 +25,15 @@ except Exception as e:
     nlp = None
     embedder = None
 
+# Try to import LLM client
+try:
+    from .llm_config import get_llm_client, is_llm_enabled
+    LLM_AVAILABLE = True
+except ImportError:
+    LLM_AVAILABLE = False
+    get_llm_client = None
+    is_llm_enabled = None
+
 
 class DraftOptimizerV2:
     """Complete semantic SEO draft optimizer with distributional semantics."""
@@ -279,15 +288,34 @@ class DraftOptimizerV2:
         if not section:
             return []
 
-        options = []
         content = section['content']
+
+        # Try LLM first if available
+        if LLM_AVAILABLE and is_llm_enabled():
+            try:
+                llm_client = get_llm_client()
+                if llm_client:
+                    llm_result = llm_client.generate_keyword_insertions(
+                        keyword=keyword,
+                        section_content=content,
+                        macro_context=self.macro_context
+                    )
+
+                    if llm_result.get('success') and llm_result.get('options'):
+                        return llm_result['options']
+            except Exception as e:
+                print(f"LLM insertion generation failed, falling back to local: {e}")
+
+        # Fallback to local generation
+        options = []
         sentences = content.split('. ')
 
         # Option 1: Add at beginning of section
         options.append({
             'position': 'beginning',
             'suggestion': f"Add '{keyword}' in the opening sentence of this section",
-            'example': f"{keyword.title()} is an important aspect to consider. {sentences[0] if sentences else ''}"
+            'sentence': f"{keyword.title()} is an important aspect to consider. {sentences[0] if sentences else ''}",
+            'placement': 'Start of section'
         })
 
         # Option 2: Add in middle (natural flow)
@@ -295,14 +323,16 @@ class DraftOptimizerV2:
         options.append({
             'position': 'middle',
             'suggestion': f"Integrate '{keyword}' naturally in the middle of the section",
-            'example': f"This relates directly to {keyword.lower()}, which {sentences[mid_point] if mid_point < len(sentences) else ''}"
+            'sentence': f"This relates directly to {keyword.lower()}, which {sentences[mid_point] if mid_point < len(sentences) else ''}",
+            'placement': 'Middle of section'
         })
 
         # Option 3: Add at end (summary/conclusion)
         options.append({
             'position': 'end',
             'suggestion': f"Mention '{keyword}' in the section conclusion",
-            'example': f"In summary, {keyword.lower()} plays a crucial role in {self.macro_context.lower()}."
+            'sentence': f"In summary, {keyword.lower()} plays a crucial role in {self.macro_context.lower()}.",
+            'placement': 'End of section'
         })
 
         return options
