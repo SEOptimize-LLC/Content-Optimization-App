@@ -101,21 +101,34 @@ class LLMSemanticExtractor:
 
     def _parse_queries_basic(self, query_text: str) -> List[str]:
         """
-        Basic query parsing - just clean obvious garbage.
-        LLM will handle the semantic filtering.
+        Query parsing with garbage filtering before sending to LLM.
         """
         text = re.sub(r'[#*`]', '', query_text)
         lines = text.split('\n')
         queries = []
 
+        # Garbage keywords that indicate headers/instructions, not queries
+        garbage_keywords = [
+            'below is', 'this section', 'each section', 'following', 'outlines how',
+            'specifically tailored', 'methodology', 'comprehensive', 'analysis',
+            'optimize and structure', 'visibility', 'engagement', 'conversions',
+            'query fan-out', 'google\'s methodology', 'target query',
+            '– informational:', '– transactional:', '– commercial:', '– navigational:'
+        ]
+
         for line in lines:
             line = line.strip()
 
-            # Very basic filters (LLM will do the real work)
-            if len(line) < 5 or len(line) > 150:
+            # CRITICAL: Reject lines that are too long (headers/instructions)
+            if len(line) < 5 or len(line) > 120:
                 continue
 
+            # Reject lines ending with colons (headers)
             if line.endswith(':'):
+                continue
+
+            # Reject garbage instructions/headers
+            if any(kw in line.lower() for kw in garbage_keywords):
                 continue
 
             # Remove bullets
