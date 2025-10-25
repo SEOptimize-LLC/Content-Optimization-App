@@ -153,8 +153,14 @@ class TopicalMapBuilder:
         return dict(raw_map)
 
     def _extract_sub_attributes(self, attribute: str, queries: List[str]) -> List[str]:
-        """Extract sub-attributes for a given attribute."""
+        """
+        Extract sub-attributes for a given attribute.
+        CRITICAL: Avoid tautologies by excluding words that are IN the parent attribute.
+        """
         sub_attrs = set()
+
+        # Split attribute into words to check against
+        attribute_words = set(attribute.lower().split())
 
         # Find queries containing this attribute
         relevant_queries = [q for q in queries if attribute.lower() in q.lower()]
@@ -167,8 +173,18 @@ class TopicalMapBuilder:
                 if attribute.lower() in chunk.text.lower():
                     # Extract modifiers as sub-attributes
                     for token in chunk:
-                        if token.pos_ in ['ADJ', 'NOUN'] and token.text.lower() != attribute.lower():
-                            sub_attrs.add(token.text.lower())
+                        token_text = token.text.lower()
+
+                        # CRITICAL: Avoid tautologies
+                        # Don't add if:
+                        # 1. Token is any word in the parent attribute
+                        # 2. Token is too generic (single char, stop word)
+                        # 3. Token is not meaningful (ADJ/NOUN only)
+                        if (token.pos_ in ['ADJ', 'NOUN'] and
+                            token_text not in attribute_words and  # Not IN parent attribute
+                            len(token_text) > 2 and  # Not too short
+                            token_text not in {'best', 'top', 'good', 'high', 'low', 'many', 'few'}):  # Not generic filler
+                            sub_attrs.add(token_text)
 
         return list(sub_attrs)[:5]  # Limit to top 5 sub-attributes
 

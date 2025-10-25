@@ -194,20 +194,41 @@ class OutlineOptimizerV2:
         return results
 
     def _extract_queries_from_report(self, report_text: str) -> List[str]:
-        """Extract queries from Query Fan-Out report."""
+        """Extract queries from Query Fan-Out report - FILTER GARBAGE."""
         import re
 
         # Remove markdown formatting
         text = re.sub(r'[#*`]', '', report_text)
         lines = text.split('\n')
 
+        # Garbage keywords that indicate headers/instructions, not queries
+        garbage_keywords = [
+            'below is', 'this section', 'each section', 'following', 'outlines how',
+            'specifically tailored', 'methodology', 'comprehensive', 'analysis',
+            'optimize and structure', 'visibility', 'engagement', 'conversions',
+            'query fan-out', 'google\'s methodology', 'target query',
+            '– informational:', '– transactional:', '– commercial:', '– navigational:'
+        ]
+
         queries = []
         for line in lines:
             line = line.strip()
-            if len(line) > 5 and not line.endswith(':'):
-                cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
-                if cleaned and len(cleaned) > 3:
-                    queries.append(cleaned)
+
+            # CRITICAL: Reject lines that are too long (headers/instructions)
+            if len(line) < 5 or len(line) > 120:
+                continue
+
+            # Reject lines ending with colons (headers)
+            if line.endswith(':'):
+                continue
+
+            # Reject garbage instructions/headers
+            if any(kw in line.lower() for kw in garbage_keywords):
+                continue
+
+            cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
+            if cleaned and len(cleaned) >= 5:
+                queries.append(cleaned)
 
         return queries[:50]  # Limit to top 50 queries
 
