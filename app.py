@@ -379,8 +379,62 @@ elif st.session_state.step == 4:
     # Display results
     st.markdown("### Optimization Results")
 
+    # Add prominent download buttons at the top
+    st.info("📥 **Ready to download?** Use the buttons below or switch to the Export tab.")
+
+    col_top1, col_top2, col_top3 = st.columns([1, 1, 2])
+
+    with col_top1:
+        st.download_button(
+            label="📄 Download MD",
+            data=st.session_state.output_md,
+            file_name="semantic_seo_optimization.md",
+            mime="text/markdown",
+            use_container_width=True
+        )
+
+    with col_top2:
+        try:
+            docx_buffer = io.BytesIO()
+            doc = Document()
+            doc.add_heading("Semantic SEO Optimization", 0)
+
+            # Add metadata
+            for key, value in st.session_state.metadata.items():
+                doc.add_paragraph(f"{key}: {value}")
+            doc.add_page_break()
+
+            # Add content
+            lines = st.session_state.output_md.split('\n')
+            for line in lines:
+                if line.startswith('# '):
+                    doc.add_heading(line[2:], level=1)
+                elif line.startswith('## '):
+                    doc.add_heading(line[3:], level=2)
+                elif line.startswith('### '):
+                    doc.add_heading(line[4:], level=3)
+                elif line.startswith('- '):
+                    doc.add_paragraph(line[2:], style='List Bullet')
+                elif line.strip():
+                    doc.add_paragraph(line)
+
+            doc.save(docx_buffer)
+            docx_buffer.seek(0)
+
+            st.download_button(
+                label="📝 Download Word",
+                data=docx_buffer,
+                file_name="semantic_seo_optimization.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"Word export error: {e}")
+
+    st.markdown("---")
+
     # Tabs for different views
-    tab1, tab2 = st.tabs(["📄 Full Report", "📥 Export"])
+    tab1, tab2 = st.tabs(["📄 Full Report", "📥 Export Options"])
 
     with tab1:
         st.markdown(st.session_state.output_md)

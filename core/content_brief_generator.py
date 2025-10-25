@@ -149,19 +149,33 @@ class ContentBriefGenerator:
         if query.endswith('?'):
             return query
 
+        # Check if query looks like a proper noun/brand (starts with capital or has multiple capitals)
+        is_proper_noun = query[0].isupper() if query else False
+        has_multiple_words = len(query.split()) > 1
+
         # Convert based on question type
         if question_type == 'definitional':
             return f"What is {query}?"
         elif question_type == 'grouping':
+            # Use singular/plural appropriately
             return f"What are the types of {query}?"
         elif question_type == 'comparative':
             return query if ' vs ' in query.lower() else f"How does {query} compare?"
         elif question_type == 'procedural':
             return f"How to {query}?" if not query.startswith('how') else f"{query}?"
         elif question_type == 'boolean':
-            return f"Is {query}?" if not query.startswith(('is', 'are', 'can', 'do')) else f"{query}?"
+            # Only use "Is" for actual boolean questions
+            # For proper nouns/brands, use "What is" instead
+            if not query.startswith(('is', 'are', 'can', 'do', 'does', 'will')):
+                if is_proper_noun or 'best' in query.lower() or 'top' in query.lower():
+                    return f"What are {query}?"
+                else:
+                    return f"Is {query} safe?" if not has_multiple_words else f"What is {query}?"
+            else:
+                return f"{query}?"
         else:
-            return f"{query}?"
+            # Default: turn into "What is/are" question
+            return f"What is {query}?"
 
     def _build_contextual_hierarchy(self, contextual_vector: List[Dict]) -> Dict:
         """
