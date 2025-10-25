@@ -10,8 +10,8 @@ import traceback
 
 # Import all new modules
 try:
-    # Use NEW semantic extractor V2 (proper implementation)
-    from .semantic_extractor_v2 import extract_entity_context, SemanticExtractorV2
+    # Use LLM-powered semantic extractor (Claude Haiku 4.5)
+    from .semantic_extractor_llm import extract_entity_context, LLMSemanticExtractor
     from .topical_map_builder import build_topical_map
     from .query_processor import process_queries, generate_questions
     from .content_brief_generator import generate_content_brief
@@ -19,7 +19,7 @@ try:
     from .network_builder import build_semantic_network
     from .url_structure_generator import generate_url_structure
     from .meta_optimizer import optimize_meta
-    print("SUCCESS: All new optimizer modules imported (using Semantic Extractor V2)")
+    print("SUCCESS: All new optimizer modules imported (using LLM Semantic Extractor)")
 except Exception as e:
     print(f"ERROR importing new modules: {e}")
     traceback.print_exc()
@@ -29,7 +29,7 @@ class OutlineOptimizerV2:
     """Complete semantic SEO outline optimizer."""
 
     def __init__(self):
-        self.entity_extractor = SemanticExtractorV2()
+        self.entity_extractor = LLMSemanticExtractor()
 
     def optimize_complete(self,
                          query_report_text: str,

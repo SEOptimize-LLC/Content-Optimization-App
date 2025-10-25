@@ -10,12 +10,12 @@ from docx import Document
 
 # Import semantic SEO optimizers
 try:
-    # Use NEW semantic extractor V2 (proper semantic analysis)
-    from core.semantic_extractor_v2 import extract_entity_context
+    # Use LLM-powered semantic extractor (Claude Haiku 4.5)
+    from core.semantic_extractor_llm import extract_entity_context
     from core.outline_optimizer import optimize_outline
     from core.draft_optimizer import optimize_draft
     from core.llm_config import get_llm_client, is_llm_enabled
-    print("SUCCESS: Semantic SEO optimizers loaded (using V2 extractor)")
+    print("SUCCESS: Semantic SEO optimizers loaded (using LLM extractor)")
 except Exception as e:
     print(f"ERROR loading optimizers: {e}")
     traceback.print_exc()
