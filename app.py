@@ -10,11 +10,12 @@ from docx import Document
 
 # Import semantic SEO optimizers
 try:
-    from core.entity_context_extractor import extract_entity_context
+    # Use NEW semantic extractor V2 (proper semantic analysis)
+    from core.semantic_extractor_v2 import extract_entity_context
     from core.outline_optimizer import optimize_outline
     from core.draft_optimizer import optimize_draft
     from core.llm_config import get_llm_client, is_llm_enabled
-    print("SUCCESS: Semantic SEO optimizers loaded")
+    print("SUCCESS: Semantic SEO optimizers loaded (using V2 extractor)")
 except Exception as e:
     print(f"ERROR loading optimizers: {e}")
     traceback.print_exc()
@@ -433,66 +434,9 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # Tabs for different views
-    tab1, tab2 = st.tabs(["📄 Full Report", "📥 Export Options"])
-
-    with tab1:
-        st.markdown(st.session_state.output_md)
-
-    with tab2:
-        st.markdown("### Export Options")
-
-        col1, col2, col3 = st.columns(3)
-
-        with col1:
-            # Markdown export
-            st.download_button(
-                label="📄 Download Markdown",
-                data=st.session_state.output_md,
-                file_name="semantic_seo_optimization.md",
-                mime="text/markdown"
-            )
-
-        with col2:
-            # Word export
-            try:
-                docx_buffer = io.BytesIO()
-                doc = Document()
-                doc.add_heading("Semantic SEO Optimization", 0)
-
-                # Add metadata
-                for key, value in st.session_state.metadata.items():
-                    doc.add_paragraph(f"{key}: {value}")
-                doc.add_page_break()
-
-                # Add content
-                lines = st.session_state.output_md.split('\n')
-                for line in lines:
-                    if line.startswith('# '):
-                        doc.add_heading(line[2:], level=1)
-                    elif line.startswith('## '):
-                        doc.add_heading(line[3:], level=2)
-                    elif line.startswith('### '):
-                        doc.add_heading(line[4:], level=3)
-                    elif line.startswith('- '):
-                        doc.add_paragraph(line[2:], style='List Bullet')
-                    elif line.strip():
-                        doc.add_paragraph(line)
-
-                doc.save(docx_buffer)
-                docx_buffer.seek(0)
-
-                st.download_button(
-                    label="📝 Download Word",
-                    data=docx_buffer,
-                    file_name="semantic_seo_optimization.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
-            except Exception as e:
-                st.error(f"Error creating Word document: {e}")
-
-        with col3:
-            st.info("Google Docs export requires API setup. Coming soon!")
+    # Display full report (no tabs - export buttons are already at top)
+    st.markdown("### 📄 Full Report")
+    st.markdown(st.session_state.output_md)
 
     # Navigation
     st.markdown("---")
