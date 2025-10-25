@@ -78,9 +78,19 @@ class LLMSemanticExtractor:
         # Step 4: Build final EAV structure
         eav_structure = self._build_eav_from_llm_output(extraction_result)
 
+        # Step 5: Format entity and context suggestions (for compatibility with framework)
+        entity_suggestions = self._format_entity_suggestions(extraction_result)
+        source_context_suggestions = extraction_result.get('source_context_suggestions', [
+            'Informational resource',
+            'E-commerce site',
+            'Review/comparison site'
+        ])
+
         return {
             'success': True,
             'central_entity': extraction_result.get('central_entity'),
+            'entity_suggestions': entity_suggestions,  # Required by framework
+            'source_context_suggestions': source_context_suggestions,  # Required by framework
             'primary_intent': extraction_result.get('primary_intent'),
             'attributes': extraction_result.get('attributes', []),
             'eav_structure': eav_structure,
@@ -131,7 +141,8 @@ Focus on:
 1. What users ACTUALLY care about (not just keywords)
 2. Product/topic aspects (effectiveness, safety, price, features, etc.)
 3. Semantic relationships (not tautologies)
-4. Search intent patterns"""
+4. Search intent patterns
+5. SOURCE CONTEXT - the business/content type creating this content"""
 
         extraction_prompt = f"""Analyze these search queries and extract semantic structure:
 
@@ -142,6 +153,11 @@ Extract the following in JSON format:
 
 {{
   "central_entity": "The main product/topic (2-5 words, not just keywords)",
+  "source_context_suggestions": [
+    "Primary context based on intent (e.g., 'E-commerce site selling dental products')",
+    "Alternative context (e.g., 'Informational blog about oral care')",
+    "Alternative context (e.g., 'Review site for beauty products')"
+  ],
   "primary_intent": "comparison|review|how-to|informational|transactional",
   "intent_confidence": 0.0-1.0,
   "attributes": [
@@ -163,6 +179,13 @@ Extract the following in JSON format:
   "key_pain_points": ["user problems/questions from queries"],
   "content_opportunities": ["content types to create based on intent"]
 }}
+
+SOURCE CONTEXT INFERENCE RULES:
+- If many "buy", "price", "cheap", "best for sale" queries → "E-commerce selling [product category]"
+- If many "how", "what", "why", "guide" queries → "Informational resource about [topic]"
+- If many "review", "vs", "comparison", "top" queries → "Review/comparison site for [product category]"
+- If many brand-specific queries → "[Brand name] official site" or "Retailer selling [brand]"
+- Provide 2-3 suggestions ranked by likelihood based on query intent patterns
 
 CRITICAL RULES:
 - NO tautologies (e.g., NOT "strips" as sub-attribute of "whitening strips")
@@ -269,6 +292,31 @@ Return ONLY valid JSON, no markdown, no explanation."""
             })
 
         return eav
+
+    def _format_entity_suggestions(self, extraction_result: Dict) -> List[Dict]:
+        """
+        Format entity suggestions for compatibility with framework.
+
+        Args:
+            extraction_result: LLM extraction result
+
+        Returns:
+            List of entity suggestions with metadata
+        """
+        central_entity = extraction_result.get('central_entity', 'unknown')
+        intent_confidence = extraction_result.get('intent_confidence', 0.8)
+
+        # Create primary suggestion
+        suggestions = [
+            {
+                'entity': central_entity,
+                'type': 'LLM_EXTRACTED',
+                'frequency': 1,  # LLM-based, not frequency-based
+                'confidence': intent_confidence
+            }
+        ]
+
+        return suggestions
 
     def build_entity_attribute_pairs(self,
                                     central_entity: str,
