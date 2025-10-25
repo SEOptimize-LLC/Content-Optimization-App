@@ -15,6 +15,7 @@ try:
     from core.outline_optimizer import optimize_outline
     from core.draft_optimizer import optimize_draft
     from core.llm_config import get_llm_client, is_llm_enabled
+    from core.content_outline_generator import generate_content_outline, generate_outline_markdown
     print("SUCCESS: Semantic SEO optimizers loaded (using LLM extractor)")
 except Exception as e:
     print(f"ERROR loading optimizers: {e}")
@@ -43,8 +44,12 @@ if 'optimization_result' not in st.session_state:
     st.session_state.optimization_result = None
 if 'output_md' not in st.session_state:
     st.session_state.output_md = ""
+if 'content_outline_md' not in st.session_state:
+    st.session_state.content_outline_md = ""
 if 'metadata' not in st.session_state:
     st.session_state.metadata = {}
+if 'primary_keyword' not in st.session_state:
+    st.session_state.primary_keyword = ""
 
 # Title and header
 st.title("🎯 Semantic SEO Content Optimizer")
@@ -116,11 +121,22 @@ with st.sidebar:
 # STEP 1: Upload Query Fan-Out Report
 if st.session_state.step == 1:
     st.header("Step 1: Upload Query Fan-Out Report")
-    st.markdown("Upload your Query Fan-Out report and we'll automatically detect entities and attributes.")
+    st.markdown("Upload your Query Fan-Out report and provide the primary keyword.")
 
     col1, col2 = st.columns([2, 1])
 
     with col1:
+        # Primary keyword input
+        primary_keyword = st.text_input(
+            "Primary Keyword/Query",
+            placeholder="e.g., Best Dissolving Whitening Strips",
+            help="The main keyword this content will target",
+            key="primary_keyword_input"
+        )
+
+        if primary_keyword:
+            st.session_state.primary_keyword = primary_keyword
+
         query_report = st.file_uploader(
             "Upload Query Fan-Out Report",
             type=['md', 'txt'],
@@ -136,17 +152,20 @@ if st.session_state.step == 1:
                 st.text(query_text[:500] + "..." if len(query_text) > 500 else query_text)
 
             if st.button("🔍 Analyze Report", type="primary"):
-                with st.spinner("Analyzing queries and detecting entities..."):
-                    try:
-                        # Extract entities and context
-                        entity_extraction = extract_entity_context(query_text)
-                        st.session_state.entity_extraction = entity_extraction
-                        st.session_state.step = 2
-                        st.success("✓ Analysis complete! Proceed to Step 2.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error during analysis: {str(e)}")
-                        st.code(traceback.format_exc())
+                if not st.session_state.primary_keyword:
+                    st.error("Please enter the primary keyword first!")
+                else:
+                    with st.spinner("Analyzing queries and detecting entities..."):
+                        try:
+                            # Extract entities and context
+                            entity_extraction = extract_entity_context(query_text)
+                            st.session_state.entity_extraction = entity_extraction
+                            st.session_state.step = 2
+                            st.success("✓ Analysis complete! Proceed to Step 2.")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error during analysis: {str(e)}")
+                            st.code(traceback.format_exc())
 
     with col2:
         st.info("""
@@ -286,6 +305,7 @@ elif st.session_state.step == 3:
 
             with st.spinner("Running complete semantic SEO optimization..."):
                 try:
+                    # Generate semantic framework report
                     enhanced_md, metadata = optimize_outline(
                         st.session_state.query_report_text,
                         outline_text,
@@ -293,7 +313,16 @@ elif st.session_state.step == 3:
                         st.session_state.source_context
                     )
 
+                    # Generate actionable content outline
+                    content_outline_data = generate_content_outline(
+                        st.session_state.primary_keyword,
+                        st.session_state.entity_extraction,
+                        st.session_state.central_entity
+                    )
+                    content_outline_md = generate_outline_markdown(content_outline_data)
+
                     st.session_state.output_md = enhanced_md
+                    st.session_state.content_outline_md = content_outline_md
                     st.session_state.metadata = metadata
                     st.session_state.step = 4
                     st.success("✓ Optimization complete!")
@@ -434,9 +463,33 @@ elif st.session_state.step == 4:
 
     st.markdown("---")
 
-    # Display full report (no tabs - export buttons are already at top)
-    st.markdown("### 📄 Full Report")
-    st.markdown(st.session_state.output_md)
+    # Display results in two tabs
+    if st.session_state.content_outline_md:
+        # Two tabs: Semantic Analysis + Content Outline
+        tab1, tab2 = st.tabs(["📊 Semantic Analysis", "📝 Content Outline"])
+
+        with tab1:
+            st.markdown("### Semantic Analysis Report")
+            st.info("This report shows the semantic framework analysis based on Koray's methodology.")
+            st.markdown(st.session_state.output_md)
+
+        with tab2:
+            st.markdown("### Actionable Content Outline")
+            st.info("This is your ready-to-use content outline with specific structure and talking points.")
+            st.markdown(st.session_state.content_outline_md)
+
+            # Add download button for content outline
+            st.download_button(
+                label="📄 Download Content Outline (MD)",
+                data=st.session_state.content_outline_md,
+                file_name="content_outline.md",
+                mime="text/markdown",
+                key="download_content_outline"
+            )
+    else:
+        # Fallback: display semantic report only (for draft optimization)
+        st.markdown("### 📄 Full Report")
+        st.markdown(st.session_state.output_md)
 
     # Navigation
     st.markdown("---")
@@ -445,9 +498,10 @@ elif st.session_state.step == 4:
     with col_nav1:
         if st.button("🔄 Start New Optimization"):
             for key in ['step', 'entity_extraction', 'central_entity', 'source_context',
-                        'query_report_text', 'optimization_result', 'output_md', 'metadata']:
+                        'query_report_text', 'optimization_result', 'output_md', 'content_outline_md',
+                        'metadata', 'primary_keyword']:
                 st.session_state[key] = None if key != 'step' else 1
-                if key in ['output_md']:
+                if key in ['output_md', 'content_outline_md', 'primary_keyword']:
                     st.session_state[key] = ""
                 if key in ['metadata']:
                     st.session_state[key] = {}
