@@ -87,11 +87,15 @@ class OutlineOptimizerV2:
                 entity_extraction
             )
 
+            # Get LLM's semantic attributes (with sub-attributes)
+            llm_attributes = entity_extraction.get('attributes', [])
+
             topical_map = build_topical_map(
                 central_entity,
                 source_context,
                 query_report_text,
-                entity_attribute_pairs
+                entity_attribute_pairs,
+                llm_attributes=llm_attributes  # Pass LLM's semantic data!
             )
             results['pipeline_steps'].append('topical_map')
             results['topical_map'] = topical_map

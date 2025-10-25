@@ -7,7 +7,7 @@ Based on Koray's Semantic SEO framework.
 import spacy
 import networkx as nx
 from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 import re
 
 try:
@@ -20,18 +20,26 @@ except OSError:
 class TopicalMapBuilder:
     """Build topical maps from entity-attribute pairs."""
 
-    def __init__(self, central_entity: str, source_context: str):
+    def __init__(self, central_entity: str, source_context: str, llm_attributes: Optional[List[Dict]] = None):
         """
         Initialize topical map builder.
 
         Args:
             central_entity: The main entity (e.g., "glasses", "Germany")
             source_context: Business context (e.g., "luxury eyewear brand")
+            llm_attributes: Optional LLM-extracted attributes with semantic sub-attributes
         """
         self.central_entity = central_entity
         self.source_context = source_context
+        self.llm_attributes = llm_attributes or []
         self.nlp = nlp
         self.graph = nx.DiGraph()  # Directed graph for topical relationships
+
+        # Build attribute lookup for LLM data
+        self.llm_attr_lookup = {}
+        for attr in self.llm_attributes:
+            attr_name = attr.get('name', '').lower()
+            self.llm_attr_lookup[attr_name] = attr
 
     def build_from_queries(self, query_text: str, entity_attribute_pairs: List[Tuple[str, str]]) -> Dict:
         """
@@ -69,23 +77,44 @@ class TopicalMapBuilder:
         }
 
     def _parse_queries(self, query_text: str) -> List[str]:
-        """Parse queries from text."""
+        """Parse queries from text - FILTER OUT GARBAGE."""
         text = re.sub(r'[#*`]', '', query_text)
         lines = text.split('\n')
         queries = []
 
+        # Keywords that indicate instructions/headers, not queries
+        garbage_keywords = [
+            'below is', 'this section', 'each section', 'following', 'outlines how',
+            'specifically tailored', 'methodology', 'comprehensive', 'analysis',
+            'optimize and structure', 'visibility', 'engagement', 'conversions',
+            'query fan-out', 'google\'s methodology', 'target query'
+        ]
+
         for line in lines:
             line = line.strip()
-            if len(line) > 5 and not line.endswith(':'):
-                cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
-                if cleaned and len(cleaned) > 3:
-                    queries.append(cleaned)
+
+            # CRITICAL: Reject lines that are too long (headers/instructions)
+            if len(line) < 5 or len(line) > 120:
+                continue
+
+            # Reject lines ending with colons (headers)
+            if line.endswith(':'):
+                continue
+
+            # Reject garbage instructions
+            if any(kw in line.lower() for kw in garbage_keywords):
+                continue
+
+            cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
+            if cleaned and len(cleaned) >= 5:
+                queries.append(cleaned)
 
         return queries
 
     def _build_raw_map(self, entity_attribute_pairs: List[Tuple[str, str]], queries: List[str]) -> Dict:
         """
         Build raw topical map from entity-attribute pairs.
+        Uses LLM's semantic sub-attributes if available (NO TAUTOLOGIES!)
 
         Returns:
             Dictionary with attributes and their metadata
@@ -109,9 +138,17 @@ class TopicalMapBuilder:
                 if attribute.lower() in query.lower() or entity.lower() in query.lower():
                     raw_map[key]['queries'].append(query)
 
-            # Extract sub-attributes using dependency parsing
-            sub_attrs = self._extract_sub_attributes(attribute, queries)
-            raw_map[key]['sub_attributes'].extend(sub_attrs)
+            # USE LLM's semantic sub-attributes if available (NO TAUTOLOGIES!)
+            if key in self.llm_attr_lookup:
+                llm_attr = self.llm_attr_lookup[key]
+                sub_attrs = llm_attr.get('sub_attributes', [])[:5]  # Top 5 semantic sub-attributes
+                raw_map[key]['sub_attributes'] = sub_attrs
+                print(f"✓ Using LLM semantic sub-attributes for '{attribute}': {sub_attrs}")
+            else:
+                # Fallback: Extract sub-attributes (may create tautologies)
+                sub_attrs = self._extract_sub_attributes(attribute, queries)
+                raw_map[key]['sub_attributes'].extend(sub_attrs)
+                print(f"⚠ Fallback extraction for '{attribute}': {sub_attrs}")
 
         return dict(raw_map)
 
@@ -376,7 +413,8 @@ class TopicalMapBuilder:
 def build_topical_map(central_entity: str,
                      source_context: str,
                      query_report_text: str,
-                     entity_attribute_pairs: List[Tuple[str, str]]) -> Dict:
+                     entity_attribute_pairs: List[Tuple[str, str]],
+                     llm_attributes: Optional[List[Dict]] = None) -> Dict:
     """
     Main function to build topical map.
 
@@ -385,11 +423,12 @@ def build_topical_map(central_entity: str,
         source_context: Confirmed source context
         query_report_text: Raw query fan-out text
         entity_attribute_pairs: List of (entity, attribute) tuples
+        llm_attributes: Optional LLM-extracted attributes with semantic sub-attributes
 
     Returns:
         Complete topical map structure
     """
-    builder = TopicalMapBuilder(central_entity, source_context)
+    builder = TopicalMapBuilder(central_entity, source_context, llm_attributes=llm_attributes)
     topical_map = builder.build_from_queries(query_report_text, entity_attribute_pairs)
 
     # Add markdown export
