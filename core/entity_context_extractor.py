@@ -81,14 +81,46 @@ class EntityContextExtractor:
         lines = text.split('\n')
         queries = []
 
+        # Keywords that indicate instructions/headers, not queries
+        instruction_keywords = [
+            'below is', 'this section', 'each section', 'following', 'outlines how',
+            'specifically tailored', 'methodology', 'comprehensive', 'analysis',
+            'optimize and structure', 'visibility', 'engagement', 'conversions',
+            'query fan-out'
+        ]
+
         for line in lines:
             line = line.strip()
-            # Skip empty lines, headers, or very short lines
-            if len(line) > 5 and not line.endswith(':'):
-                # Remove bullet points, numbers, etc.
-                cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
-                if cleaned and len(cleaned) > 3:
-                    queries.append(cleaned)
+
+            # Skip if too short or too long (queries are typically 3-100 chars)
+            if len(line) < 3 or len(line) > 100:
+                continue
+
+            # Skip headers (ending with :)
+            if line.endswith(':'):
+                continue
+
+            # Remove bullet points, numbers, etc.
+            cleaned = re.sub(r'^[-•*\d.)\]]+\s*', '', line)
+            if not cleaned or len(cleaned) < 3:
+                continue
+
+            # Skip instruction/description text
+            cleaned_lower = cleaned.lower()
+            if any(keyword in cleaned_lower for keyword in instruction_keywords):
+                continue
+
+            # Skip if it looks like a full sentence (starts with capital and has multiple words)
+            # but allow brand names and proper queries
+            words = cleaned.split()
+            if len(words) > 15:  # Too long to be a query
+                continue
+
+            # Skip lines that look like metadata or categories
+            if cleaned.lower().startswith(('category:', 'section:', 'type:', 'note:')):
+                continue
+
+            queries.append(cleaned)
 
         return queries
 
@@ -97,27 +129,49 @@ class EntityContextExtractor:
         attributes = []
         attr_counts = Counter()
 
+        # Stop words and garbage filters
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'}
+        garbage_attrs = {
+            'friendly', 'work', 'high', 'standard', 'conscious', 'quick', 'daily',
+            'maximum', 'top', 'best', 'leading', 'safe', 'related', 'internal'
+        }
+
         for query in queries:
             doc = self.nlp(query)
 
             # Look for noun chunks (potential attributes)
             for chunk in doc.noun_chunks:
-                # Skip single-word chunks that are just determiners
-                if len(chunk.text.split()) > 1 or chunk.root.pos_ == 'NOUN':
-                    attr_counts[chunk.text.lower()] += 1
+                chunk_text = chunk.text.lower().strip()
+
+                # Skip if single character or just stop words
+                if len(chunk_text) <= 1:
+                    continue
+
+                words = chunk_text.split()
+                # Skip if all words are stop words or garbage
+                if all(w in stop_words or w in garbage_attrs for w in words):
+                    continue
+
+                # Only count if it has substance (2+ words or meaningful single noun)
+                if len(words) > 1 or (chunk.root.pos_ == 'NOUN' and chunk_text not in garbage_attrs):
+                    attr_counts[chunk_text] += 1
 
             # Look for adjectives modifying nouns (attributes)
             for token in doc:
                 if token.pos_ == 'ADJ' and token.head.pos_ == 'NOUN':
-                    attr_text = f"{token.text} {token.head.text}"
-                    attr_counts[attr_text.lower()] += 1
+                    attr_text = f"{token.text} {token.head.text}".lower()
 
-        # Get top attributes
+                    # Skip garbage adjectives
+                    if token.text.lower() not in garbage_attrs:
+                        attr_counts[attr_text] += 1
+
+        # Get top attributes, filter to only those with frequency >= 2
         for attr, count in attr_counts.most_common(20):
-            attributes.append({
-                'attribute': attr,
-                'frequency': count
-            })
+            if count >= 2:  # Must appear at least twice to be meaningful
+                attributes.append({
+                    'attribute': attr,
+                    'frequency': count
+                })
 
         return attributes
 
